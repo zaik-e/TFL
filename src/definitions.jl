@@ -1,6 +1,3 @@
-"""
-Singletone object represenitng trap state in the DFA.
-"""
 struct Trap end
 const TRAP = Trap()
 Base.String(_::Trap) = "TRAP"
@@ -126,3 +123,53 @@ function Base.show(io::IO, automaton::PDA)
     print(io, res)
 end
 
+
+function getCFG(input)
+    Term = Set()
+    NTerm = Set()
+    AllSymb = Set()
+    Rules = Set{Dict}()
+    Start = ""
+
+    for line ∈ split(input, '\n')
+        if (strip(line, ' ') == "")
+            continue
+        end
+        splited = split(strip(line, ' '), ' ')
+        
+        leftnterm = splited[1]
+        right = []
+        push!(NTerm, leftnterm)
+        isempty(Start) && (Start = leftnterm) 
+
+        for part ∈ splited[3:end]
+            if (part== "")
+                continue
+            end
+            currsymb = ""
+            for symb in part
+                if (currsymb == "")
+                    if ('a' <= symb <= 'z')
+                        currsymb *= string(symb)
+                    elseif ('A' <= symb <= 'Z')
+                        currsymb *= string(symb)
+                    end
+                else 
+                    if ('0' <= symb <= '9')
+                        currsymb *= string(symb)
+                    elseif ('a' <= symb <= 'z') || ('A' <= symb <= 'Z')
+                        push!(AllSymb, currsymb)
+                        push!(right, currsymb)
+                        currsymb = string(symb)
+                    end
+                end
+            end
+            push!(AllSymb, currsymb)
+            push!(right, currsymb)
+        end
+        push!(Rules, Dict(leftnterm => right))
+    end
+    Term = setdiff(AllSymb, NTerm)
+
+    return CFG(Term, NTerm, Rules, Start)
+end
