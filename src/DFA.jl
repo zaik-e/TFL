@@ -80,7 +80,7 @@ it may be not rendered as one.
 """
 function Base.show(io::IO, automaton::DFA)
     delete_quotas(ω) = replace("$ω", "\"" => "")
-    res = """rankdir="LR"\n"""
+    res = """"""
     for q ∈ automaton.Q
         strq = q.number
         if q ∈ automaton.F
@@ -102,3 +102,16 @@ function Base.show(io::IO, automaton::DFA)
     res = "digraph Automaton {\n" * res * "}\n"
     print(io, res)
 end
+
+
+# @show aut = buildPositionDFA(c)
+# for i ∈ aut.Q 
+#     f = i.number
+#     r = "$f  "
+#     for j ∈ i.Rules
+#         a = j.Rule
+#         b= j.curposition
+#         r *= " $a $b "
+#     end
+#     println(r)
+# end

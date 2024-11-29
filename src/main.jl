@@ -2,7 +2,7 @@ include("Singletons.jl")
 using DataStructures
 
 
-s = """S -> aA\n  A ->  bS \nS -> c"""
+s = """S -> aSb \nS -> c"""
 
 @show c = getCFG(s)
 
@@ -51,7 +51,6 @@ Base.isequal(a::PositionalState, b::PositionalState) = Base.isequal(hash(a), has
 
 
 function buildPositionDFA(cfg::CFG)
-
     prestartRule = PositionRule(("(Zero)", [cfg.Start]))
     grammar = addPrestartRule(cfg, ("(Zero)", [cfg.Start]))
 
@@ -75,9 +74,7 @@ function buildPositionDFA(cfg::CFG)
         dequeue!(queue)
         
         for symb ∈ Σ
-            println(symb)
             nextstate = PositionalState(countstates)
-            countstates += 1
             addRulesFromTrans!(nextstate, currentstate, symb, grammar)
             if isempty(nextstate.Rules) 
                 continue
@@ -86,6 +83,12 @@ function buildPositionDFA(cfg::CFG)
                 push!(Q, nextstate)
                 enqueue!(queue, nextstate)
                 δ[(currentstate, symb)] = nextstate
+                countstates += 1
+
+                if (currentstate.number == 0) && (symb == cfg.Start)
+                    push!(F, nextstate)
+                end
+
             else
                 existed = collect(setdiff(Q, setdiff(Q, Set([nextstate]))))[1]
                 δ[(currentstate, symb)] = existed
@@ -97,14 +100,3 @@ function buildPositionDFA(cfg::CFG)
     DFA(Q, Σ, δ, veryfirststate, F)
 end
 
-@show aut = buildPositionDFA(c)
-for i ∈ aut.Q 
-    f = i.number
-    r = "$f  "
-    for j ∈ i.Rules
-        a = j.Rule
-        b= j.curposition
-        r *= " $a $b "
-    end
-    println(r)
-end
