@@ -45,13 +45,20 @@ function addRulesFromTrans!(childstate::PositionalState, parentstate::Positional
     childstate
 end
 
-function buildPositionDFA(grammar::CFG)
+
+Base.hash(a::PositionalState, h::UInt) = hash(a.Rules, hash(:PositionalState, h))
+Base.isequal(a::PositionalState, b::PositionalState) = Base.isequal(hash(a), hash(b))
+
+
+function buildPositionDFA(cfg::CFG)
+
+    prestartRule = PositionRule(("(Zero)", [cfg.Start]))
+    grammar = addPrestartRule(cfg, ("(Zero)", [cfg.Start]))
+
     Q = Set{PositionalState}()
     Σ = setdiff(union(grammar.Σ, grammar.N), Set([ϵ]))
     δ = Dict{Tuple{PositionalState, eltype(Σ)}, PositionalState}()
     F = Set{PositionalState}()
-    prestartRule = PositionRule(("(Zero)", [grammar.Start]))
-    q₀ = prestartRule
 
     countstates = 0
 
@@ -59,8 +66,9 @@ function buildPositionDFA(grammar::CFG)
     veryfirststate = PositionalState(countstates)
     countstates += 1
     veryfirststate = addRule(veryfirststate, prestartRule)
-    addRulesForNTerm!(veryfirststate, grammar, q₀)
+    addRulesForNTerm!(veryfirststate, grammar, cfg.Start)
     enqueue!(queue, veryfirststate)
+    push!(Q, veryfirststate)
 
     while (!isempty(queue))
         currentstate = first(queue)
@@ -77,8 +85,12 @@ function buildPositionDFA(grammar::CFG)
             if !(nextstate ∈ Q) 
                 push!(Q, nextstate)
                 enqueue!(queue, nextstate)
+                δ[(currentstate, symb)] = nextstate
+            else
+                existed = collect(setdiff(Q, setdiff(Q, Set([nextstate]))))[1]
+                δ[(currentstate, symb)] = existed
             end
-            δ[(currentstate, symb)] = nextstate
+            
         end
     end
 
@@ -86,3 +98,13 @@ function buildPositionDFA(grammar::CFG)
 end
 
 @show aut = buildPositionDFA(c)
+for i ∈ aut.Q 
+    f = i.number
+    r = "$f  "
+    for j ∈ i.Rules
+        a = j.Rule
+        b= j.curposition
+        r *= " $a $b "
+    end
+    println(r)
+end

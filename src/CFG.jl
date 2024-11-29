@@ -33,6 +33,17 @@ function CFG(
     CFG{Union{TΣ, Epsilon}, TN}(Σ, N, Rules, Start)    
 end
 
+function addPrestartRule(g::CFG, rule::Tuple{TN, AbstractVector}) where {TN}
+    Σ = g.Σ
+    N = g.N
+    push!(N, rule[1])
+    Rules = g.Rules
+    push!(Rules, rule)
+    Start = rule[1]
+
+    CFG(Σ, N, Rules, Start)    
+end
+
 
 function getCFG(input)
     Term = Set()
