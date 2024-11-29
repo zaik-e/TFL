@@ -1,68 +1,88 @@
 include("Singletons.jl")
-import Base: ==
 using DataStructures
 
 
-s = """S -> A0a0b\n  a0 ->  cc \nA0 -> c \n S -> A0 A0 \n \n"""
+s = """S -> aA\n  A ->  bS \nS -> c"""
 
 @show c = getCFG(s)
 
-struct PositionRule{TΣ, TN}
-    Rule::Tuple{TN, AbstractVector{Union{TΣ, TN}}}
-    maxposition::Int
-    curposition::Int
+struct PositionalState
+    Rules::Set{PositionRule}
+    number::Int 
 end
 
-function PositionRule(
-    rule::Tuple{TN, AbstractVector{Union{TΣ, TN}}},
-    cpos::Int,
-    mpos::Int
-    ) where {TΣ, TN}
-    maxposition = mpos
-    curposition = cpos
-    Rule = rule
-    PositionRule{TΣ, TN}(Rule, maxposition, curposition)    
+function PositionalState(num::Int)
+    Rules = Set{PositionRule}()
+    number = num
+    PositionalState(Rules, number)    
 end
 
-
-function PositionRule(
-    rule::Tuple{TN, AbstractVector{Union{TΣ, TN}}}
-    ) where {TΣ, TN}
-    maxposition = size(rule[2])[1]
-    curposition = 0
-    Rule = rule
-    PositionRule{TΣ, TN}(Rule, maxposition, curposition)    
+function addRule(state::PositionalState, rule::PositionRule)
+    rules = push!(state.Rules, rule)
+    # num = state.number + 1
+    PositionalState(rules, state.number)
 end
 
+function addRulesForNTerm!(state::PositionalState, cfg::CFG, nterm)
+    for (left, right) ∈ cfg.Rules
+        if left == nterm
+            state = addRule(state, PositionRule((left, right)))
+        end
+    end
+    state
+end
 
+function addRulesFromTrans!(childstate::PositionalState, parentstate::PositionalState, symb, cfg::CFG)
+    for rule ∈ parentstate.Rules
+        if ((rule.curposition < rule.maxposition) &&
+            (rule.Rule[2][rule.curposition + 1] == symb))
+            childstate = addRule(childstate, PositionRule(rule.Rule, rule.curposition + 1))
+            if (rule.curposition + 2 <= rule.maxposition)
+                addRulesForNTerm!(childstate, cfg, rule.Rule[2][rule.curposition + 2])
+            end
+        end
+    end
+    childstate
+end
 
 function buildPositionDFA(grammar::CFG)
-    Q = Set{PositionRule}()
-    Σ = union(grammar.Σ, grammar.N)
-    δ = Dict()
-    F = Set{PositionRule}()
+    Q = Set{PositionalState}()
+    Σ = setdiff(union(grammar.Σ, grammar.N), Set([ϵ]))
+    δ = Dict{Tuple{PositionalState, eltype(Σ)}, PositionalState}()
+    F = Set{PositionalState}()
     prestartRule = PositionRule(("(Zero)", [grammar.Start]))
-    q₀ = prestartRule    
+    q₀ = prestartRule
+
+    countstates = 0
+
+    queue = Queue{PositionalState}()
+    veryfirststate = PositionalState(countstates)
+    countstates += 1
+    veryfirststate = addRule(veryfirststate, prestartRule)
+    addRulesForNTerm!(veryfirststate, grammar, q₀)
+    enqueue!(queue, veryfirststate)
+
+    while (!isempty(queue))
+        currentstate = first(queue)
+        dequeue!(queue)
+        
+        for symb ∈ Σ
+            println(symb)
+            nextstate = PositionalState(countstates)
+            countstates += 1
+            addRulesFromTrans!(nextstate, currentstate, symb, grammar)
+            if isempty(nextstate.Rules) 
+                continue
+            end
+            if !(nextstate ∈ Q) 
+                push!(Q, nextstate)
+                enqueue!(queue, nextstate)
+            end
+            δ[(currentstate, symb)] = nextstate
+        end
+    end
+
+    DFA(Q, Σ, δ, veryfirststate, F)
 end
 
-function equalPosRules(first::PositionRule, second::PositionRule)
-    return ((first.maxposition == second.maxposition) && (first.curposition == second.curposition) &&
-        deepcopy(first.Rule) == deepcopy(second.Rule))
-    
-end
-
-
-==(first::PositionRule, second::PositionRule) = equalPosRules(first, second)
-
-
-
-Q = Set([1, 2, 3, 4])
-Σ = Set(['a', 'b', ϵ])
-δ = Dict{Tuple{Int, Union{Any}}, Int}()
-F = Set([2])
-
-push!(δ, (1, 'a') => 2)
-push!(δ, (2, 'b') => 3)
-push!(δ, (2, 'b') => 4)
-push!(δ, (2, 'a') => 1)
-push!(δ, (3, ϵ) => 1)
+@show aut = buildPositionDFA(c)

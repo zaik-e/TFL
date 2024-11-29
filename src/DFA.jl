@@ -17,12 +17,7 @@ function DFA(
     Q = Set{Union{T, Trap}}(Q)
     F = Set{Union{T, Trap}}(F)
     δ = Dict{Tuple{Union{T, Trap}, S}, Union{T, Trap}}(δ)
-    TRAP ∉ Q && push!(Q, TRAP)
-    for q ∈ Q, c ∈ Σ
-        _ = get!(δ, (q, c)) do 
-            TRAP
-        end
-    end
+     
     DFA{Union{T, Trap}, S}(Q, Σ, δ, q0, F)
 end
 
@@ -87,7 +82,7 @@ function Base.show(io::IO, automaton::DFA)
     delete_quotas(ω) = replace("$ω", "\"" => "")
     res = """rankdir="LR"\n"""
     for q ∈ automaton.Q
-        strq = delete_quotas(q)
+        strq = q.number
         if q ∈ automaton.F
             res *= "\"$strq\" [shape=doublecircle]"
         else
@@ -97,136 +92,13 @@ function Base.show(io::IO, automaton::DFA)
     end
 
     res *= "start [shape=point]\n"
-    strq0 = delete_quotas(automaton.q0)
+    strq0 = automaton.q0.number
     res *= "start -> \"$strq0\"\n"
     for ((start_state, letter), end_state) ∈ automaton.δ
-        strstart = delete_quotas(start_state)
-        strend = delete_quotas(end_state)
+        strstart = start_state.number
+        strend = end_state.number
         res *= "\"$strstart\" -> \"$strend\" [label=\"$letter\"]\n"
     end
     res = "digraph Automaton {\n" * res * "}\n"
     print(io, res)
-end
-
-"""
-Dumb implementation of the Hopcroft minimization algorithm.
-Runs at O(|Σ||E|log|E|) time.
-Copied from Wikipedia.
-"""
-function equivalence_classes(α::DFA)
-    P = Set()
-    W = Set()
-    push!(P, α.F, setdiff(α.Q, α.F))
-    push!(W, α.F, setdiff(α.Q, α.F))
-
-    while !isempty(W)
-        A = rand(W)
-        delete!(W, A)
-        for c ∈ α.Σ
-            X = Set()
-            for q ∈ α.Q
-                !haskey(α.δ, (q, c)) && continue
-                α.δ[q, c] ∈ A && push!(X, q)
-            end
-            for Y ∈ P
-                (isempty(X ∩ Y) || isempty(setdiff(Y, X))) &&
-                    continue
-                delete!(P, Y)
-                push!(P, X ∩ Y, setdiff(Y, X))
-                if Y ∈ W
-                    delete!(W, Y)
-                    push!(W, X ∩ Y, setdiff(Y, X))
-                else
-                    length(X ∩ Y) <= length(setdiff(Y, X)) ?
-                        push!(W, X ∩ Y) :
-                        push!(W, setdiff(Y, X))
-                end
-            end
-        end
-    end
-
-    P
-end
-
-function minimize(α::DFA{T, S})::DFA where {T, S}
-    classes = [equivalence_classes(α)...]
-    state_to_class = Dict()
-    for (index, class) ∈ enumerate(classes), state ∈ class
-        state_to_class[state] = index
-    end
-
-    new_Q = Set{Int}(eachindex(classes))
-    new_Σ = α.Σ
-    new_δ = Dict{Tuple{Int, S}, Int}()
-    new_F = Set{Int}()
-    new_q0 = state_to_class[α.q0]
-    for (index, class) ∈ enumerate(classes), c ∈ α.Σ
-        q = rand(class)
-        q ∈ α.F && push!(new_F, index)
-        new_δ[index, c] = state_to_class[α.δ[q, c]]
-    end
-
-    DFA(new_Q, new_Σ, new_δ, new_q0, new_F)
-end
-
-"""
-visualize works works only on Unix-like systems.
-"""
-function visualize(automaton, filepath_wo_ext)
-    Sys.isunix() || @error "works only on Unix-like systems :(" 
-    io_buffer = IOBuffer() 
-    show(io_buffer, automaton)    
-    graph = String(take!(io_buffer))
-    cmd = pipeline(`echo $graph`,  `dot -Tsvg`)
-    open("$filepath_wo_ext.svg", "w") do io
-        run(pipeline(cmd, stdout=io))
-    end
-end
-
-"""
-Builds DFA from equivalence table
-"""
-function DFA_from_table(
-        main_prefixes, 
-        complementary_prefixes, 
-        rows,
-    )
-    # FIXME wtf is going on with epsilons
-    state_map = Dict(p => idx for (idx, p) ∈ enumerate(main_prefixes))
-    prefix_to_row = Dict()
-    all_prefixes = map(String, vcat(main_prefixes, complementary_prefixes))
-    # ????? "ϵ" ≠ "ϵ"
-    eps = all_prefixes[1]
-    for (row, p) ∈ zip(rows, all_prefixes)
-        prefix_to_row[p] = row
-    end
-    row_to_prefix = Dict()
-    for (row, p) ∈ zip(rows, main_prefixes)
-        row_to_prefix[row] = p
-    end
-    Q = Set{Int}(1:length(main_prefixes))
-    q0 = 0
-    Σ = Set{Char}(['L', 'R'])
-    δ = Dict{Tuple{Int, Char}, Int}()
-    F = Set{Int}()
-
-    for (p, row) ∈ zip(main_prefixes, rows)
-        row[1] == 1 && push!(F, state_map[p])
-    end
-    # ????? "ϵ" ≠ "ϵ"
-    for p ∈ all_prefixes
-        if p == eps
-            q0 = state_map[p]
-            continue
-        end
-        sub_prefix = p[1:length(p)-1]
-        if sub_prefix == ""
-            sub_prefix = eps
-        end
-        letter = p[length(p)]
-        from = state_map[row_to_prefix[prefix_to_row[sub_prefix]]]
-        to = state_map[row_to_prefix[prefix_to_row[p]]]
-        δ[from, letter] = to
-    end
-    DFA(Q, Σ, δ, q0, F)
 end
