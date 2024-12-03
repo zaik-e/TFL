@@ -1,102 +1,145 @@
-include("Singletons.jl")
 using DataStructures
+include("Singletons.jl")
 
 
-s = """S -> aSb \nS -> c"""
+s = """S -> SSa \n S -> SbS \n S -> a"""
 
-@show c = getCFG(s)
+c = getCFG(s)
 
-struct PositionalState
-    Rules::Set{PositionRule}
-    number::Int 
+aut = buildPositionDFA(c)
+for i ∈ aut.Q 
+    f = i.number
+    r = "$f  "
+    for j ∈ i.Rules
+        a = j.Rule
+        b= j.curposition
+        r *= " $a $b "
+    end
+    println(r)
 end
 
-function PositionalState(num::Int)
-    Rules = Set{PositionRule}()
-    number = num
-    PositionalState(Rules, number)    
+
+function reverseTransWithoutSymb(dfa::DFA)
+    result = Dict{Any, Set}()
+    for (from, to) ∈ dfa.δ
+        fromstate = from[1]
+        if !(haskey(result, to))
+            result[to] = Set()
+        end
+        push!(result[to], fromstate)
+    end
+    result    
 end
 
-function addRule(state::PositionalState, rule::PositionRule)
-    rules = push!(state.Rules, rule)
-    # num = state.number + 1
-    PositionalState(rules, state.number)
-end
-
-function addRulesForNTerm!(state::PositionalState, cfg::CFG, nterm)
-    for (left, right) ∈ cfg.Rules
-        if left == nterm
-            state = addRule(state, PositionRule((left, right)))
+function findReduces(state::PositionState)
+    result = Set()
+    for posrule ∈ state.Rules
+        if posrule.curposition == posrule.maxposition
+            push!(result, (posrule.Rule[1], posrule.maxposition))
         end
     end
-    state
+    result
 end
 
-function addRulesFromTrans!(childstate::PositionalState, parentstate::PositionalState, symb, cfg::CFG)
-    for rule ∈ parentstate.Rules
-        if ((rule.curposition < rule.maxposition) &&
-            (rule.Rule[2][rule.curposition + 1] == symb))
-            childstate = addRule(childstate, PositionRule(rule.Rule, rule.curposition + 1))
-            if (rule.curposition + 2 <= rule.maxposition)
-                addRulesForNTerm!(childstate, cfg, rule.Rule[2][rule.curposition + 2])
-            end
+function makeSteps(reversed_trans::Dict, countsteps::Int, startstate)
+    curstates = Set([startstate])
+    while countsteps > 0
+        newstates = Set()
+        for state ∈ curstates
+            union!(newstates, reversed_trans[state])
+        end
+        curstates = newstates
+        countsteps -= 1        
+    end
+    curstates    
+end
+
+
+
+function buildPDA(pdfa::DFA, cfg::CFG)
+    Q = pdfa.Q
+    Σ = cfg.Σ
+    Γ = Set()
+    δ = Dict{Tuple, eltype(Q)}()
+    q₀ = pdfa.q0
+    F = pdfa.F
+
+    reduce_from = Dict()  #стомтояния + нетерм и куда переход
+    δ_pdfa_reversed = reverseTransWithoutSymb(pdfa)
+
+    for (from, to) ∈ pdfa.δ
+        if from[2] ∈ Σ
+            δ[(from[1], from[2], ∀, [Zi(to.number), ∀])] = to
+            push!(Γ, Zi(to.number))
         end
     end
-    childstate
-end
 
-
-Base.hash(a::PositionalState, h::UInt) = hash(a.Rules, hash(:PositionalState, h))
-Base.isequal(a::PositionalState, b::PositionalState) = Base.isequal(hash(a), hash(b))
-
-
-function buildPositionDFA(cfg::CFG)
-    prestartRule = PositionRule(("(Zero)", [cfg.Start]))
-    grammar = addPrestartRule(cfg, ("(Zero)", [cfg.Start]))
-
-    Q = Set{PositionalState}()
-    Σ = setdiff(union(grammar.Σ, grammar.N), Set([ϵ]))
-    δ = Dict{Tuple{PositionalState, eltype(Σ)}, PositionalState}()
-    F = Set{PositionalState}()
-
-    countstates = 0
-
-    queue = Queue{PositionalState}()
-    veryfirststate = PositionalState(countstates)
-    countstates += 1
-    veryfirststate = addRule(veryfirststate, prestartRule)
-    addRulesForNTerm!(veryfirststate, grammar, cfg.Start)
-    enqueue!(queue, veryfirststate)
-    push!(Q, veryfirststate)
-
-    while (!isempty(queue))
-        currentstate = first(queue)
-        dequeue!(queue)
-        
-        for symb ∈ Σ
-            nextstate = PositionalState(countstates)
-            addRulesFromTrans!(nextstate, currentstate, symb, grammar)
-            if isempty(nextstate.Rules) 
-                continue
-            end
-            if !(nextstate ∈ Q) 
-                push!(Q, nextstate)
-                enqueue!(queue, nextstate)
-                δ[(currentstate, symb)] = nextstate
-                countstates += 1
-
-                if (currentstate.number == 0) && (symb == cfg.Start)
-                    push!(F, nextstate)
+    for state ∈ Q 
+        reduces = findReduces(state)
+        if (isempty(reduces))
+            continue
+        end
+        for (nterm, len) ∈ reduces
+            stepsback_states = makeSteps(δ_pdfa_reversed, len, state)
+            for nextstate ∈ stepsback_states
+                if haskey(pdfa.δ, (nextstate, nterm))
+                    reduce_from[(state, len, nextstate)] = pdfa.δ[(nextstate, nterm)]
                 end
-
-            else
-                existed = collect(setdiff(Q, setdiff(Q, Set([nextstate]))))[1]
-                δ[(currentstate, symb)] = existed
             end
-            
         end
     end
 
-    DFA(Q, Σ, δ, veryfirststate, F)
+    for (key, val) ∈ reduce_from
+        start_state = key[1]
+        numberofsteps = key[2]
+        redusefrom_state = key[3]
+        destin_state = val
+        # while numberofsteps > 0
+        #     new_state = PositionState(inccounter())
+        #     push!(Q, new_state)
+        #     δ[(start_state, ϵ, ∀, [ϵ])] = new_state
+        #     start_state = new_state
+        #     numberofsteps -= 1            
+        # end
+        adding = Vector{Union{UniversalSymb, Zi}}([∀ for _=1:numberofsteps+1])
+        adding[1] = Zi(redusefrom_state.number)
+        δ[(start_state, ϵ, adding,
+            [Zi(destin_state.number), Zi(redusefrom_state.number)])] = destin_state
+
+    end
+
+    PDA(Q, Σ, Γ, δ, q₀, F)
 end
 
+p = buildPDA(aut, c)
+
+str = InputString("a")
+
+
+
+
+# function parsePDA(input::InputString, automata::PDA)
+#     configuration = configPDA(automata.q₀, [Z₀], input)
+
+#     function parsing(config::configPDA)
+#         if !isempty(config.restofword)
+#             configs = []
+#             for (from, to) ∈ automata.δ
+#                 fromstate = from[1]
+#                 symb = from[2]
+#                 fromstack = from[3]
+#                 tostack = from[4]
+#                 if (fromstate == config.currentstate)
+#                     if fromstack <: AbstractArray
+
+#                     elseif fromstack == config.stack[end]
+#                         ((symb == config.restofword[1]) && 
+#                         (push!(configs, configPDA(to, config.stack))))
+#         else 
+#             (config.currentstate ∈ automata.F)
+#     end
+#     while !isempty(configuration.restofword)
+        
+#     end
+
+# end

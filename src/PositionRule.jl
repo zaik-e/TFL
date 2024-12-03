@@ -38,9 +38,6 @@ function PositionRule(
 end
 
 
-
-
-
 function equalPosRules(first::PositionRule, second::PositionRule)
     return ((first.maxposition == second.maxposition) && (first.curposition == second.curposition) &&
         deepcopy(first.Rule) == deepcopy(second.Rule))
