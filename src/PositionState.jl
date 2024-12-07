@@ -55,8 +55,6 @@ function buildPositionDFA(cfg::CFG)
     δ = Dict{Tuple{PositionState, eltype(Σ)}, PositionState}()
     F = Set{PositionState}()
 
-    countstates = 0
-
     queue = Queue{PositionState}()
     veryfirststate = PositionState(inccounter())
     veryfirststate = addRule(veryfirststate, prestartRule)

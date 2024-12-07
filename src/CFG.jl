@@ -1,4 +1,3 @@
-
 struct CFG{TΣ, TN}
     Σ::Set{TΣ}
     N::Set{TN}
@@ -94,3 +93,16 @@ function getCFG(input)
 
     return CFG(Term, NTerm, Rules, Start)
 end
+
+
+# for i ∈ aut.Q 
+#     f = i.number
+#     r = "$f  "
+#     for j ∈ i.Rules
+#         a = j.Rule
+#         b= j.curposition
+#         r *= " $a $b "
+#     end
+#     println(r)
+# end
+
