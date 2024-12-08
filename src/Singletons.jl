@@ -87,6 +87,6 @@ end
 
 include("CFG.jl")
 include("DFA.jl")
-include("PDA.jl")
 include("PositionRule.jl")
 include("PositionState.jl")
+include("PDA.jl")

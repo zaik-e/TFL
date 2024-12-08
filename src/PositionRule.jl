@@ -1,5 +1,3 @@
-import Base: ==
-
 struct PositionRule{TΣ, TN}
     Rule::Tuple{TN, AbstractVector{Union{TΣ, TN}}}
     maxposition::Int
@@ -44,4 +42,4 @@ function equalPosRules(first::PositionRule, second::PositionRule)
     
 end
 
-==(first::PositionRule, second::PositionRule) = equalPosRules(first, second)
+Base.:(==)(first::PositionRule, second::PositionRule) = equalPosRules(first, second)

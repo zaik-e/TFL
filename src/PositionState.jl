@@ -1,21 +1,17 @@
 using DataStructures
 
-abstract type State end  
-
-struct PositionState <: State
+struct PositionState
     Rules::Set{PositionRule}
     number::Int 
 end
 
 function PositionState(num::Int)
     Rules = Set{PositionRule}()
-    number = num
-    PositionState(Rules, number)    
+    PositionState(Rules, num)    
 end
 
 function addRule(state::PositionState, rule::PositionRule)
     rules = push!(state.Rules, rule)
-    # num = state.number + 1
     PositionState(rules, state.number)
 end
 

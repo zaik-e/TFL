@@ -93,6 +93,19 @@ function Base.show(io::IO, automaton::PDA)
 end
 
 
+function savePDA(path_to_file::String, pda::PDA)
+    open(path_to_file, "w") do file
+        serialize(file, pda)
+    end
+end
+
+function loadPDA(path_to_file::String)
+    open(path_to_file, "r") do file
+        deserialize(file)
+    end
+end
+
+
 function reverseTransWithoutSymb(dfa::DFA)
     result = Dict{Any, Set}()
     for (from, to) ∈ dfa.δ
