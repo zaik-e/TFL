@@ -3,6 +3,20 @@ using Serialization
 include("Singletons.jl")
 
 
+function parseTests(path_to_file::String)
+    tests = []
+    open(path_to_file, "r") do file
+        for line in eachline(file)
+            cleared = split(strip(line, ' '))
+            if isempty(cleared)
+                continue
+            end
+            push!(tests, (cleared[1], (cleared[2] == "1" ? true : false)))
+        end
+    end
+    tests
+end
+
 
 """
 -l load from file
@@ -109,29 +123,19 @@ function main()
             println(parsePDA(str, pda))
         end
     else
-        println("Здесь будет режим тестирования")
+        tests = parseTests(path_to_test)
+        for test ∈ tests
+            res = parsePDA(InputString(test[1]), pda)
+            if res == test[2]
+                println(test[1], res ? " ∈ L " : " ∉ L ", "OK")
+            else
+                println(test[1], " Failed")
+                println("   expected", test[2] ? " ∈ L" : " ∉ L")
+                println("   got", res ? " ∈ L" : " ∉ L")
+            end            
+        end
     end
-        
 
 end
 
 main()
-
-# s = """S -> aSb \n S -> aAb \n \n A -> cAc \n A -> c \n  S -> c"""
-
-# c = getCFG(s)
-
-# aut = buildPositionDFA(c)
-
-# p = buildPDA(aut, c)
-
-# savePDA("saved/pda1.jls", p)
-
-# p2 = loadPDA("saved/pda1.jls")
-
-
-# str = InputString("aaaaacccccbbbbb")
-
-
-# u = parsePDA(str, p2)
-# println(u)

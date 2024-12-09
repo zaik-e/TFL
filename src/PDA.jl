@@ -151,7 +151,7 @@ function buildPDA(pdfa::DFA, cfg::CFG)
     q₀ = pdfa.q0
     F = pdfa.F
 
-    reduce_from = Dict()  #состояния + нетерм и куда переход
+    reduce_from = Dict()  #состояния + нетерм + переход
     δ_pdfa_reversed = reverseTransWithoutSymb(pdfa)
 
     for (from, to) ∈ pdfa.δ
