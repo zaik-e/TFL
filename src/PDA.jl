@@ -55,7 +55,7 @@ function PDA(
 end
 
 
-function Base.show(io::IO, automaton::PDA)
+function Base.write(io::IO, automaton::PDA)
     delete_quotas(ω) = replace("$ω", "\"" => "")
     res = """"""
     for q ∈ automaton.Q
@@ -89,7 +89,7 @@ function Base.show(io::IO, automaton::PDA)
         res *= "\"$strstart\" -> \"$strend\" [label=\"$letter, $popstr / $pushstr\"]\n"
     end
     res = "digraph PDA {\n" * res * "}\n"
-    print(io, res)
+    write(io, res)
 end
 
 

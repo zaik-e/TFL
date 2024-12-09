@@ -1,0 +1,7 @@
+digraph PDA {
+"0" [shape=circle]
+"1" [shape=doublecircle]
+start [shape=point]
+start -> "0"
+"0" -> "1" [label="ϵ, Z₀ / Z₀Z₁"]
+}

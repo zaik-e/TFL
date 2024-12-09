@@ -17,6 +17,13 @@ function parseTests(path_to_file::String)
     tests
 end
 
+function writedotfile(path_to_file::String, pda::PDA)
+    open(path_to_file, "w") do file
+        write(file, pda)
+    end
+end
+
+
 
 """
 -l load from file
@@ -97,7 +104,7 @@ function main()
         grammar_str = ""
         while true
             line = readline()
-            if line == "0"
+            if line == ""
                 break
             end
             grammar_str = grammar_str * line * "\n"
@@ -108,6 +115,9 @@ function main()
 
         savePDA(path_to_save, pda)
 
+        nameofdot = "saved/"* split(split(split(path_to_save, '\\')[end], '/')[end], '.')[1] *".dot"
+        writedotfile(nameofdot, pda)
+
     else
         pda = loadPDA(path_to_load)
     end
@@ -116,11 +126,11 @@ function main()
         println("Строки для тестирования:")
         while true
             line = readline()
-            if line == "0"
+            if line == ""
                 break
             end
             str = InputString(strip(line, ' '))
-            println(parsePDA(str, pda))
+            println(parsePDA(str, pda) ? " ∈ L " : " ∉ L ")
         end
     else
         tests = parseTests(path_to_test)

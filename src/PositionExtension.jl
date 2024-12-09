@@ -1,5 +1,3 @@
-using DataStructures
-
 struct PositionRule{TΣ, TN}
     Rule::Tuple{TN, AbstractVector{Union{TΣ, TN}}}
     maxposition::Int
