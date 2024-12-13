@@ -79,14 +79,20 @@ function getCFG(input)
                     else
                         currsymb *= string(symb)
                     end
-
+                
+                elseif (symb == '[')
+                    if !isempty(currsymb)
+                        push!(AllSymb, currsymb)
+                        push!(right, currsymb)
+                        currsymb = ""
+                    end
+                    in_brackets = true
+                
                 elseif (currsymb == "")
                     if ('a' <= symb <= 'z')
                         currsymb *= string(symb)
                     elseif ('A' <= symb <= 'Z')
                         currsymb *= string(symb)
-                    elseif (symb == '[')
-                        in_brackets = true
                     end
                 else 
                     if ('0' <= symb <= '9')
@@ -104,6 +110,7 @@ function getCFG(input)
             end
         end
         push!(Rules, (leftnterm, right))
+        # println((leftnterm, right))
     end
     Term = setdiff(AllSymb, NTerm)
 
