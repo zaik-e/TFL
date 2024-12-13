@@ -61,12 +61,25 @@ function addRule(state::PositionState, rule::PositionRule)
 end
 
 function addRulesForNTerm!(state::PositionState, cfg::CFG, nterm)
-    for (left, right) ∈ cfg.Rules
-        if left == nterm
-            state = addRule(state, PositionRule((left, right)))
+    added = Set()
+    push!(added, nterm)
+
+    function recursiveAdding!(state::PositionState, cfg::CFG, nterm)
+        for (left, right) ∈ cfg.Rules
+            if left == nterm
+                state = addRule(state, PositionRule((left, right)))
+                if (length(right) > 0) && right[1] ∈ cfg.N && !(right[1] ∈ added)
+                    # println(right[1], left)
+                    push!(added, right[1])
+                    state = recursiveAdding!(state, cfg, right[1])
+                end
+                # println(left, " ", right[1])
+            end
         end
+        state
     end
-    state
+    
+    recursiveAdding!(state, cfg, nterm)
 end
 
 function addRulesFromTrans!(childstate::PositionState, parentstate::PositionState, symb, cfg::CFG)
@@ -100,6 +113,10 @@ function buildPositionDFA(cfg::CFG)
     veryfirststate = PositionState(inccounter())
     veryfirststate = addRule(veryfirststate, prestartRule)
     addRulesForNTerm!(veryfirststate, grammar, cfg.Start)
+
+    
+
+
     enqueue!(queue, veryfirststate)
     push!(Q, veryfirststate)
 

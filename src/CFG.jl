@@ -57,7 +57,7 @@ function getCFG(input)
         end
         splited = split(strip(line, ' '), ' ')
         
-        leftnterm = splited[1]
+        leftnterm = strip(strip(splited[1], '['), ']')
         right = []
         push!(NTerm, leftnterm)
         isempty(Start) && (Start = leftnterm) 
@@ -67,12 +67,26 @@ function getCFG(input)
                 continue
             end
             currsymb = ""
+            in_brackets = false
             for symb in part
-                if (currsymb == "")
+                if in_brackets
+                    if (symb == ']')
+                        in_brackets = false
+                        push!(AllSymb, currsymb)
+                        push!(right, currsymb)
+                        
+                        currsymb = ""
+                    else
+                        currsymb *= string(symb)
+                    end
+
+                elseif (currsymb == "")
                     if ('a' <= symb <= 'z')
                         currsymb *= string(symb)
                     elseif ('A' <= symb <= 'Z')
                         currsymb *= string(symb)
+                    elseif (symb == '[')
+                        in_brackets = true
                     end
                 else 
                     if ('0' <= symb <= '9')
@@ -84,8 +98,10 @@ function getCFG(input)
                     end
                 end
             end
-            push!(AllSymb, currsymb)
-            push!(right, currsymb)
+            if !(isempty(currsymb)) 
+                push!(AllSymb, currsymb)
+                push!(right, currsymb)
+            end
         end
         push!(Rules, (leftnterm, right))
     end
