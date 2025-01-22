@@ -55,14 +55,16 @@ function getCFG(input)
         if (strip(line, ' ') == "")
             continue
         end
-        splited = split(strip(line, ' '), ' ')
-        
-        leftnterm = strip(strip(splited[1], '['), ']')
+        splited = split(strip(line, ' '), "->")
+
+        leftnterm = strip(splited[1], ' ')
+
+        splited = split(strip(splited[2], ' '), ' ')
         right = []
         push!(NTerm, leftnterm)
         isempty(Start) && (Start = leftnterm) 
 
-        for part ∈ splited[3:end]
+        for part ∈ splited
             if (part== "")
                 continue
             end
@@ -72,6 +74,7 @@ function getCFG(input)
                 if in_brackets
                     if (symb == ']')
                         in_brackets = false
+                        currsymb *= "]"
                         push!(AllSymb, currsymb)
                         push!(right, currsymb)
                         
@@ -86,6 +89,7 @@ function getCFG(input)
                         push!(right, currsymb)
                         currsymb = ""
                     end
+                    currsymb = "["
                     in_brackets = true
                 
                 elseif (currsymb == "")

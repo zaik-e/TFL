@@ -77,11 +77,11 @@ function Base.write(io::IO, automaton::PDA)
         pushstr = ""
         popstr = ""
         for el ∈ push
-            pushstr *= String(el)
+            pushstr = String(el) * pushstr
         end
         if typeof(pop) <: AbstractArray    
             for el ∈ pop
-                popstr *= String(el)
+                popstr = String(el) * popstr
             end
         else
             popstr = "$pop"
@@ -195,8 +195,10 @@ end
 
 function parsePDA(input::InputString, automata::PDA)
     configuration = configPDA(automata.q₀, [Z₀], input)
+    max_depth = length(automata.δ) * length(input)
+    # curr_depth = 0
     
-    function parsing(config::configPDA)
+    function parsing(config::configPDA, curr_depth)
         # println(config.currentstate.number, " ", config.restofword, " ", config.stack)
         if !isempty(config.restofword)
             configs = []
@@ -229,7 +231,8 @@ function parsePDA(input::InputString, automata::PDA)
                     end
                 end
             end
-            return any(map(parsing, configs))
+            curr_depth += 1
+            return ((curr_depth <= max_depth) && any(map(x -> parsing(x, curr_depth), configs)))
 
         else
             if config.currentstate ∈ automata.F
@@ -252,9 +255,10 @@ function parsePDA(input::InputString, automata::PDA)
                     end 
                 end
             end
-            return ((length(configs) > 0) && any(map(parsing, configs)))
+            curr_depth += 1
+            return ((curr_depth <= max_depth) && (length(configs) > 0) && any(map(x -> parsing(x, curr_depth), configs)))
         end
     end
     
-    return parsing(configuration)
+    return parsing(configuration, 0)
 end
